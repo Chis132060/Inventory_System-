@@ -8,9 +8,13 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  if (profile.role === "ADMIN") {
-    redirect("/admin/dashboard");
-  }
+  const roleDashboard: Record<string, string> = {
+    ADMIN: "/admin/dashboard",
+    SUPERVISOR: "/supervisor/dashboard",
+    INVENTORY_MANAGER: "/inventory-manager/dashboard",
+    SALESMAN: "/salesman/dashboard",
+    BUYER: "/buyer/dashboard",
+  };
 
-  redirect("/waiting-approval");
+  redirect(roleDashboard[profile.role] || "/waiting-approval");
 }

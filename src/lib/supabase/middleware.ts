@@ -62,17 +62,30 @@ export async function updateSession(request: NextRequest) {
 
     const role = profile?.role || "UNASSIGNED";
 
+    // Map each role to its dashboard home
+    const roleDashboard: Record<string, string> = {
+      ADMIN: "/admin/dashboard",
+      SUPERVISOR: "/supervisor/dashboard",
+      INVENTORY_MANAGER: "/inventory-manager/dashboard",
+      SALESMAN: "/salesman/dashboard",
+      BUYER: "/buyer/dashboard",
+    };
+
+    // Map each role to the route prefix it is allowed to access
+    const rolePrefix: Record<string, string> = {
+      ADMIN: "/admin",
+      SUPERVISOR: "/supervisor",
+      INVENTORY_MANAGER: "/inventory-manager",
+      SALESMAN: "/salesman",
+      BUYER: "/buyer",
+    };
+
+    const dashboard = roleDashboard[role] || "/waiting-approval";
+
     // If on login page and authenticated → redirect based on role
     if (pathname === "/login") {
       const url = request.nextUrl.clone();
-      if (role === "ADMIN") {
-        url.pathname = "/admin/dashboard";
-      } else if (role === "UNASSIGNED") {
-        url.pathname = "/waiting-approval";
-      } else {
-        // Future: redirect other roles to their dashboards
-        url.pathname = "/waiting-approval";
-      }
+      url.pathname = dashboard;
       return NextResponse.redirect(url);
     }
 
@@ -83,10 +96,33 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
+    // Approved users should not access /waiting-approval
+    if (role !== "UNASSIGNED" && pathname.startsWith("/waiting-approval")) {
+      const url = request.nextUrl.clone();
+      url.pathname = dashboard;
+      return NextResponse.redirect(url);
+    }
+
+    // Route-level protection: each role can only access its own prefix
+    // ADMIN can access all routes
+    if (role !== "ADMIN" && role !== "UNASSIGNED") {
+      const allowedPrefix = rolePrefix[role];
+      const protectedPrefixes = Object.values(rolePrefix);
+      const isProtectedRoute = protectedPrefixes.some((prefix) =>
+        pathname.startsWith(prefix),
+      );
+
+      if (isProtectedRoute && !pathname.startsWith(allowedPrefix)) {
+        const url = request.nextUrl.clone();
+        url.pathname = dashboard;
+        return NextResponse.redirect(url);
+      }
+    }
+
     // Non-admin users cannot access /admin routes
     if (pathname.startsWith("/admin") && role !== "ADMIN") {
       const url = request.nextUrl.clone();
-      url.pathname = "/waiting-approval";
+      url.pathname = dashboard;
       return NextResponse.redirect(url);
     }
   }

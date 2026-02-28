@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth";
-import { packagingCreateSchema } from "@/lib/validators";
+import { packagingCreateSchema, packagingUpdateSchema } from "@/lib/validators";
 import {
   createPackaging,
   updatePackaging,
@@ -16,7 +16,10 @@ export async function createPackagingAction(
 ): Promise<ActionResult<Packaging>> {
   const admin = await requireAdmin();
 
-  const raw = { name: formData.get("name") as string };
+  const raw = {
+    name: formData.get("name") as string,
+  };
+
   const parsed = packagingCreateSchema.safeParse(raw);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
@@ -48,15 +51,20 @@ export async function updatePackagingAction(
 ): Promise<ActionResult<Packaging>> {
   const admin = await requireAdmin();
 
-  const id = formData.get("id") as string;
-  const raw = { name: formData.get("name") as string };
-  const parsed = packagingCreateSchema.safeParse(raw);
+  const raw = {
+    id: formData.get("id") as string,
+    name: formData.get("name") as string,
+  };
+
+  const parsed = packagingUpdateSchema.safeParse(raw);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
   try {
-    const pkg = await updatePackaging(id, parsed.data);
+    const pkg = await updatePackaging(parsed.data.id, {
+      name: parsed.data.name,
+    });
 
     await createAuditLog({
       actorId: admin.id,
